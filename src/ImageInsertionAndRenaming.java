@@ -13,6 +13,7 @@ public class ImageInsertionAndRenaming extends JFrame {
     JButton directoryButton;
     JButton imageButton;
     JButton insertButton;
+    JButton deleteButton;
 
     public ImageInsertionAndRenaming() {
         createView();
@@ -38,7 +39,7 @@ public class ImageInsertionAndRenaming extends JFrame {
         panel.add(directoryButton);
         directoryButton.addActionListener(new DirectoryAction());
 
-        JLabel positionLabel = new JLabel("Insert position:");
+        JLabel positionLabel = new JLabel("Insert/Delete position:");
         panel.add(positionLabel);
 
         positionField = new JTextField(10);
@@ -57,6 +58,10 @@ public class ImageInsertionAndRenaming extends JFrame {
         insertButton = new JButton("Insert image and rename files");
         panel.add(insertButton);
         insertButton.addActionListener(new InsertAction());
+
+        deleteButton = new JButton("Delete image and rename files");
+        panel.add(deleteButton);
+        deleteButton.addActionListener(new DeleteAction());
     }
 
     public static void main(String[] args) {
@@ -132,6 +137,55 @@ public class ImageInsertionAndRenaming extends JFrame {
 
             Files.copy(newImage.toPath(), new File(directory, insertPosition + ".jpg").toPath());
         }
+
+        private int getNumber(String name) {
+            return Integer.parseInt(name.substring(0, name.lastIndexOf(".")));
+        }
+    }
+
+    private class DeleteAction implements ActionListener {
+        public void actionPerformed(ActionEvent e) {
+            File directory = new File(directoryField.getText());
+            String position = positionField.getText();
+
+            if (!position.matches("\\d+")) {
+                JOptionPane.showMessageDialog(null, "Please enter a valid number for the delete position.");
+                return;
+            }
+
+            if (!directory.exists()) {
+                JOptionPane.showMessageDialog(null, "The selected directory does not exist.");
+                return;
+            }
+
+            try {
+                deleteImage(directory, Integer.parseInt(position));
+                JOptionPane.showMessageDialog(null, "Image deleted and files renamed successfully.");
+            } catch (IOException ex) {
+                JOptionPane.showMessageDialog(null, "Error deleting image and renaming files.");
+            }
+        }
+
+        private void deleteImage(File directory, int deletePosition) throws IOException {
+            File[] files = directory.listFiles((d, name) -> name.toLowerCase().endsWith(".jpg"));
+            java.util.Arrays.sort(files, (f1, f2) -> Integer.compare(getNumber(f1.getName()), getNumber(f2.getName())));
+
+            // Check if file exists before deleting
+            File toDelete = new File(directory, deletePosition + ".jpg");
+            if (toDelete.exists()) {
+                Files.delete(toDelete.toPath());
+            }
+
+            // Shift files after the deleted one
+            for (int i = deletePosition; i <= files.length; i++) {
+                File file = new File(directory, (i + 1) + ".jpg");
+                if (file.exists()) {
+                    File newFile = new File(directory, i + ".jpg");
+                    Files.move(file.toPath(), newFile.toPath(), StandardCopyOption.REPLACE_EXISTING);
+                }
+            }
+        }
+
 
         private int getNumber(String name) {
             return Integer.parseInt(name.substring(0, name.lastIndexOf(".")));
